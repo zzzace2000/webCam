@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -23,15 +24,19 @@ import org.opencv.highgui.Highgui;
 
 public class receiver {
 	
-	static receiver theReceiver;
-	static ServerSocket ss;
+	receiver theReceiver;
+	ServerSocket ss;
 	Socket theSocket;
-	static int port = 19999;
-	static FacePanel facePanel;
+	int port = 19999;
+	FacePanel facePanel;
 	
 	public static void main(String[] args)
 	{
-		theReceiver = new receiver();
+		new receiver();
+	}
+	
+	
+	public receiver() {
 		//make the JFrame
 	    JFrame frame = new JFrame("WebCam Capture - Face detection");  
 	    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  
@@ -47,20 +52,39 @@ public class receiver {
 			ss = new ServerSocket(port);
 			
 			Socket theSocket = ss.accept();
+			InputStream iStream = theSocket.getInputStream();
+			OutputStream oStream = theSocket.getOutputStream();
+			
+			ByteArrayInputStream bais = null;
+			ByteArrayOutputStream baos = null;
+			
 			System.out.println("Assign the Socket");
 			
-			DataInputStream is = new DataInputStream(theSocket.getInputStream());
-			
-			if (is.readUTF().startsWith("/s")) {
-				System.out.println("get the value /s");
+			if (theSocket != null) {
 				while (true) {
-					BufferedImage image = ImageIO.read(theSocket.getInputStream());
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					String size = readResponse(iStream);
+					int expectedByteCount = Integer.parseInt(size);
+					System.out.println("Expecting "+expectedByteCount);
+					
+					baos = new ByteArrayOutputStream(expectedByteCount);
+					byte[] buffer = new byte[1024];
+					int bytesRead = 0;
+                    int bytesIn = 0;
+                    
+                    // Read the image from the server...
+                    while (bytesRead < expectedByteCount) {
+                        bytesIn = iStream.read(buffer);
+                        bytesRead += bytesIn;
+                        baos.write(buffer, 0, bytesIn);
+                    }
+                    System.out.println("Read " + bytesRead);
+                    baos.close();
+                    
+                    // Wrap the result in an InputStream
+                    bais = new ByteArrayInputStream(baos.toByteArray());
+                    
+					BufferedImage image = ImageIO.read(bais);
+					
 					if (image != null) {
 						facePanel.assignBufferedImage(image);
 						facePanel.repaint();
@@ -75,15 +99,21 @@ public class receiver {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-	
-	
+		} 
 	}
 	
-	public receiver() {
-		
-	}
+	protected String readResponse(InputStream is) throws IOException {
+        StringBuilder sb = new StringBuilder(128);
+        int in = -1;
+        while ((in = is.read()) != '\n') {
+            sb.append((char) in);
+        }
+        return sb.toString();
+    }
+	
+	
 }
+
 class FacePanel extends JPanel{  
     private static final long serialVersionUID = 1L;  
     private BufferedImage image;  

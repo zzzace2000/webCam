@@ -110,6 +110,9 @@ class FaceDetector {
 public class Main {  
 
     static Socket theSocket;
+    ArrayList<BufferedImage> imageBuffer = new ArrayList<BufferedImage>();
+    boolean imageIsNotSent = false;
+
     
 	public static void main(String arg[]) throws InterruptedException{  
       // Load the native library.  
@@ -129,7 +132,6 @@ public class Main {
 	      frame.setBackground(Color.BLUE);
 	      frame.add(facePanel,BorderLayout.CENTER);       
 	      frame.setVisible(true);  
-	      DataOutputStream outputStream;
 	      //Open and Read from the video stream  
 	       Mat webcam_image=new Mat();  
 	       VideoCapture webCam =new VideoCapture(0);   
@@ -145,18 +147,23 @@ public class Main {
 		}
 	   
 	   try {
-	   OutputStream oStream = theSocket.getOutputStream();
-	   ArrayList<BufferedImage> imageBuffer = new ArrayList<BufferedImage>();
 
 	   if( webCam.isOpened())  {  
-	        Thread.sleep(500);
-			outputStream = new DataOutputStream(oStream);
-	        outputStream.writeUTF("/s");
-	      
+	        Thread.sleep(2000);
+			
+	        sendImage child = new sendImage(this, theSocket);
+	        Thread theThread = new Thread(child);
+	        theThread.start();
+	        
 	        while( true )  
 	        {  
 	        	 webCam.read(webcam_image);
 	        	 System.out.println("Catch an image!");
+	        	 
+	        	 //while (imageIsNotSent) {
+	        	//	 Thread.sleep(2000);
+	        	 //}
+	        	 
 	             if( !webcam_image.empty() )  
 	             {   
 	            	 /// This delay eases the computational load .. with little performance leakage
@@ -168,10 +175,12 @@ public class Main {
 	            	   Highgui.imencode(".jpg", webcam_image, mb);
 	            	
 	            	   BufferedImage image = ImageIO.read(new ByteArrayInputStream(mb.toArray()));
-	            	   ImageIO.write(image, "JPEG", oStream);
+	            	   
+	            	   imageBuffer.add(image);
 					  
 	                   facePanel.matToBufferedImage(webcam_image);  
-	                   facePanel.repaint();   
+	                   facePanel.repaint();
+	                   //imageIsNotSent = true;
 	             }  
 	             else  
 	             {   
