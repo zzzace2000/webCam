@@ -15,6 +15,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 
 import javax.imageio.ImageIO;  
 import javax.imageio.stream.ImageOutputStream;
@@ -134,7 +135,7 @@ public class Main {
 	       VideoCapture webCam =new VideoCapture(0);   
 	      
 	      try {
-			theSocket = new Socket(InetAddress.getByName(Inet4Address.getLocalHost().getHostAddress()), 19999);
+			theSocket = new Socket(InetAddress.getByName("140.112.18.196"), 19999);
 			System.out.println("Client connect!");
 			
 	      } catch (UnknownHostException e) {
@@ -143,29 +144,21 @@ public class Main {
 			e.printStackTrace();
 		}
 	   
-	        if( webCam.isOpened())  
-	          {  
-	           try {
-				Thread.sleep(500);
-			} catch (InterruptedException e2) {
-				// TODO Auto-generated catch block
-				e2.printStackTrace();
-			} /// This one-time delay allows the Webcam to initialize itself
-	           try {
-				outputStream = new DataOutputStream(theSocket.getOutputStream());
-	           outputStream.writeUTF("/s");
-			} catch (IOException e2) {
-				// TODO Auto-generated catch block
-				e2.printStackTrace();
-			}
-	           
+	   try {
+	   OutputStream oStream = theSocket.getOutputStream();
+	   ArrayList<BufferedImage> imageBuffer = new ArrayList<BufferedImage>();
+
+	   if( webCam.isOpened())  {  
+	        Thread.sleep(500);
+			outputStream = new DataOutputStream(oStream);
+	        outputStream.writeUTF("/s");
 	      
-	           while( true )  
-	           {  
+	        while( true )  
+	        {  
 	        	 webCam.read(webcam_image);
 	        	 System.out.println("Catch an image!");
 	             if( !webcam_image.empty() )  
-	              {   
+	             {   
 	            	 /// This delay eases the computational load .. with little performance leakage
 	                   //frame.setSize(webcam_image.width()+40,webcam_image.height()+60);  
 	                   //Apply the classifier to the captured image  
@@ -174,26 +167,29 @@ public class Main {
 	            	   MatOfByte mb=new MatOfByte();
 	            	   Highgui.imencode(".jpg", webcam_image, mb);
 	            	
-	                   try {
-						BufferedImage image = ImageIO.read(new ByteArrayInputStream(mb.toArray()));
-						ImageIO.write(image, "JPEG", theSocket.getOutputStream());
-					} catch (IOException e) {
-						e.printStackTrace();
-					}  
-	                 
+	            	   BufferedImage image = ImageIO.read(new ByteArrayInputStream(mb.toArray()));
+	            	   ImageIO.write(image, "JPEG", oStream);
+					  
 	                   facePanel.matToBufferedImage(webcam_image);  
 	                   facePanel.repaint();   
-	              }  
-	              else  
-	              {   
+	             }  
+	             else  
+	             {   
 	                   System.out.println(" --(!) No captured frame from webcam !");   
 	                   break;   
-	              }  
 	             }  
-	            }
-	           webCam.release(); //release the webcam
-	 
-     } //end main 
-		
+	        }  
+	         
+	        webCam.release(); //release the webcam
+	   }
+	   } catch (InterruptedException e2) {
+		// TODO Auto-generated catch block
+		e2.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	}
+    } //end main 
+	
+	
 }
 	 
