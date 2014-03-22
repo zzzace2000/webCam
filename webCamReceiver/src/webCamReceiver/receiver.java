@@ -29,6 +29,8 @@ public class receiver {
 	Socket theSocket;
 	int port = 19999;
 	FacePanel facePanel;
+    boolean initialSizeNotSet = true;
+
 	
 	public static void main(String[] args)
 	{
@@ -87,6 +89,10 @@ public class receiver {
 					
 					if (image != null) {
 						facePanel.assignBufferedImage(image);
+						if (initialSizeNotSet) {
+							frame.setSize(image.getWidth(), image.getHeight());
+							initialSizeNotSet = false;
+						}
 						facePanel.repaint();
 						System.out.println("image is gotten!");
 					}
@@ -138,7 +144,7 @@ class FacePanel extends JPanel{
     public void paintComponent(Graphics g){  
          super.paintComponent(g);   
          if (this.image==null) return;         
-          g.drawImage(this.image,10,10,this.image.getWidth(),this.image.getHeight(), null);
+          g.drawImage(this.image,0,0,this.image.getWidth(),this.image.getHeight(), null);
     }
        
 }  

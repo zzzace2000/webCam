@@ -61,7 +61,7 @@ class FacePanel extends JPanel{
      public void paintComponent(Graphics g){  
           super.paintComponent(g);   
           if (this.image==null) return;         
-           g.drawImage(this.image,10,10,this.image.getWidth(),this.image.getHeight(), null);
+           g.drawImage(this.image,0,0,this.getWidth(),this.getHeight(), null);
      }
         
 }  
@@ -112,8 +112,8 @@ public class Main {
     static Socket theSocket;
     ArrayList<BufferedImage> imageBuffer = new ArrayList<BufferedImage>();
     boolean imageIsNotSent = false;
+    boolean initialSizeNotSet = true;
 
-    
 	public static void main(String arg[]) throws InterruptedException{  
       // Load the native library.  
       System.loadLibrary(Core.NATIVE_LIBRARY_NAME); 
@@ -135,9 +135,9 @@ public class Main {
 	      //Open and Read from the video stream  
 	       Mat webcam_image=new Mat();  
 	       VideoCapture webCam =new VideoCapture(0);   
-	      
+	       
 	      try {
-			theSocket = new Socket(InetAddress.getByName("140.112.18.196"), 19999);
+			theSocket = new Socket(InetAddress.getByName(getLocalAddress()), 19999);
 			System.out.println("Client connect!");
 			
 	      } catch (UnknownHostException e) {
@@ -177,8 +177,11 @@ public class Main {
 	            	   BufferedImage image = ImageIO.read(new ByteArrayInputStream(mb.toArray()));
 	            	   
 	            	   imageBuffer.add(image);
-					  
-	                   facePanel.matToBufferedImage(webcam_image);  
+					if (initialSizeNotSet) { 
+						   frame.setSize(image.getWidth(), image.getHeight());
+						   initialSizeNotSet = false;
+					   }
+					   facePanel.matToBufferedImage(webcam_image);  
 	                   facePanel.repaint();
 	                   //imageIsNotSent = true;
 	             }  
@@ -198,6 +201,18 @@ public class Main {
 		e.printStackTrace();
 	}
     } //end main 
+
+	private String getLocalAddress() {
+		String theAddresString;
+		try {
+			theAddresString = Inet4Address.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			return null;
+		}
+		System.out.println(theAddresString);
+		return theAddresString;
+	}
 	
 	
 }

@@ -33,11 +33,10 @@ public class sendImage implements Runnable{
 		try {
 			while(true) {
 				if (!theMain.imageBuffer.isEmpty()) {
-					Thread.sleep(500);
 					System.out.println("Write something");
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
-					BufferedImage theImage = theMain.imageBuffer.remove(theMain.imageBuffer.size()-1);
-					theMain.imageBuffer.clear();
+					BufferedImage theImage = theMain.imageBuffer.remove(0);
+					//theMain.imageBuffer.clear();
 					
 					ImageIO.write(theImage, "jpg", baos);
 					baos.close();
@@ -50,8 +49,6 @@ public class sendImage implements Runnable{
 			}
 		} catch (IOException e) {
 			System.out.println("Wrong in image WriteIO");
-		} catch (InterruptedException e) {
-			e.printStackTrace();
 		} finally {
 			try {
 				theSocket.close();
