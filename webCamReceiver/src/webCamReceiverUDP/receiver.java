@@ -1,4 +1,4 @@
-package webCamReceiver;
+package webCamReceiverUDP;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -11,6 +11,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -25,9 +27,10 @@ import org.opencv.highgui.Highgui;
 public class receiver {
 	
 	receiver theReceiver;
-	ServerSocket ss;
+	DatagramSocket ss;
 	Socket theSocket;
-	int port = 19999;
+	static int PORT_TO_STREAM_TO = 19998;
+	static int UDP_MAX_SIZE = 64000;
 	FacePanel facePanel;
     boolean initialSizeNotSet = true;
 
@@ -51,39 +54,22 @@ public class receiver {
 	    frame.setVisible(true);
 	
 	    try {
-			ss = new ServerSocket(port);
-			
-			Socket theSocket = ss.accept();
-			InputStream iStream = theSocket.getInputStream();
-			OutputStream oStream = theSocket.getOutputStream();
+			ss = new DatagramSocket(PORT_TO_STREAM_TO);
 			
 			ByteArrayInputStream bais = null;
-			ByteArrayOutputStream baos = null;
 			
 			System.out.println("Assign the Socket");
 			
-			if (theSocket != null) {
+			if (ss != null) {
 				while (true) {
-					String size = readResponse(iStream);
-					int expectedByteCount = Integer.parseInt(size);
-					System.out.println("Expecting "+expectedByteCount);
+					byte[] receivedBuffer = new byte[UDP_MAX_SIZE];
 					
-					baos = new ByteArrayOutputStream(expectedByteCount);
-					byte[] buffer = new byte[1024];
-					int bytesRead = 0;
-                    int bytesIn = 0;
-                    
-                    // Read the image from the server...
-                    while (bytesRead < expectedByteCount) {
-                        bytesIn = iStream.read(buffer);
-                        bytesRead += bytesIn;
-                        baos.write(buffer, 0, bytesIn);
-                    }
-                    System.out.println("Read " + bytesRead);
-                    baos.close();
-                    
+					DatagramPacket receivedPacket = new DatagramPacket(receivedBuffer, receivedBuffer.length);
+					
+					ss.receive(receivedPacket);					
+					
                     // Wrap the result in an InputStream
-                    bais = new ByteArrayInputStream(baos.toByteArray());
+                    bais = new ByteArrayInputStream(receivedPacket.getData());
                     
 					BufferedImage image = ImageIO.read(bais);
 					
@@ -103,19 +89,15 @@ public class receiver {
 				}
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} 
+		} finally {
+			try {
+				theSocket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
-	
-	protected String readResponse(InputStream is) throws IOException {
-        StringBuilder sb = new StringBuilder(128);
-        int in = -1;
-        while ((in = is.read()) != '\n') {
-            sb.append((char) in);
-        }
-        return sb.toString();
-    }
 	
 	
 }
@@ -144,7 +126,7 @@ class FacePanel extends JPanel{
     public void paintComponent(Graphics g){  
          super.paintComponent(g);   
          if (this.image==null) return;         
-          g.drawImage(this.image,0,0,this.getWidth(),this.getHeight(), null);
+          g.drawImage(this.image,0,0,this.image.getWidth(),this.image.getHeight(), null);
     }
        
 }  

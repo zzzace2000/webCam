@@ -1,4 +1,4 @@
-package readFromWebCAM;
+package readWebcamUsingUDP;
 
 /*  
  * Captures the camera stream with OpenCV  
@@ -12,6 +12,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -44,10 +45,6 @@ class FacePanel extends JPanel {
 		super();
 	}
 
-	public void assignImage (BufferedImage i) {
-		image = i;
-	}
-	
 	/*
 	 * Converts/writes a Mat into a BufferedImage.
 	 * 
@@ -72,6 +69,10 @@ class FacePanel extends JPanel {
 		if (this.image == null)
 			return;
 		g.drawImage(this.image, 0, 0, this.getWidth(), this.getHeight(), null);
+	}
+
+	public void assignImage(BufferedImage scaledImage) {
+		image = scaledImage;
 	}
 
 }
@@ -125,11 +126,10 @@ class FaceDetector {
 
 public class Main {
 
-	static Socket theSocket;
 	ArrayList<BufferedImage> imageBuffer = new ArrayList<BufferedImage>();
 	boolean imageIsNotSent = false;
 	boolean initialSizeNotSet = true;
-	int viewMode = 1;
+	int ViewMode = 1; // 1 from webcam. 2 from desktop
 
 	public static void main(String arg[]) throws InterruptedException {
 		// Load the native library.
@@ -139,6 +139,9 @@ public class Main {
 	}
 
 	public Main() {
+
+		new ViewSwitch(this);
+
 		// make the JFrame
 		JFrame frame = new JFrame("WebCam Capture - Face detection");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -149,75 +152,54 @@ public class Main {
 		frame.setBackground(Color.BLUE);
 		frame.add(facePanel, BorderLayout.CENTER);
 		frame.setVisible(true);
-		
-		// new view switch
-		new ViewSwitch(this);
-		
 		// Open and Read from the video stream
 		Mat webcam_image = new Mat();
 		VideoCapture webCam = new VideoCapture(0);
-
-		try {
-			theSocket = new Socket(InetAddress.getByName(getLocalAddress()),
-					19999);
-			System.out.println("Client connect!");
-
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		Graphics2D graphics2D;
 
 		try {
 			Robot robot = new Robot();
 			Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-			
+
 			if (webCam.isOpened()) {
 				Thread.sleep(4000);
 
-				sendImage child = new sendImage(this, theSocket);
+				sendImage child = new sendImage(this);
 				Thread theThread = new Thread(child);
-				theThread.start();  
+				theThread.start();
 
 				while (true) {
-					if (viewMode == 1) {
-
+					
+					//==== Webcam mode ====//
+					if (ViewMode == 1) { 
 						webCam.read(webcam_image);
 						System.out.println("Catch an image!");
 
 						if (!webcam_image.empty()) {
-							// / This delay eases the computational load .. with
-							// little performance leakage
-							// frame.setSize(webcam_image.width()+40,webcam_image.height()+60);
-							// Apply the classifier to the captured image
-							// webcam_image=faceDetector.detect(webcam_image);
-							// Display the image
+							
 							MatOfByte mb = new MatOfByte();
 							Highgui.imencode(".jpg", webcam_image, mb);
 
-							BufferedImage image = ImageIO
-									.read(new ByteArrayInputStream(mb.toArray()));
+							BufferedImage image = ImageIO.read(new ByteArrayInputStream(mb.toArray()));
 
 							imageBuffer.add(image);
 							if (initialSizeNotSet) {
-								frame.setSize(image.getWidth(),
-										image.getHeight());
+								frame.setSize(image.getWidth(), image.getHeight());
 								initialSizeNotSet = false;
 							}
 							facePanel.matToBufferedImage(webcam_image);
 							facePanel.repaint();
 							// imageIsNotSent = true;
 						} else {
-							System.out
-									.println(" --(!) No captured frame from webcam !");
+							System.out.println(" --(!) No captured frame from webcam !");
 							webCam.release(); // release the webcam
 							return;
 						}
 					}
-					else if (viewMode == 2) {
+					else if (ViewMode == 2) {
 						BufferedImage capture = robot.createScreenCapture(screenRect);
-						int width = 630;
-						int height = 504;
+						int width = 600;
+						int height = (int) Math.floor(width * capture.getHeight()/capture.getWidth());
 						// Create new (blank) image of required (scaled) size
 
 						BufferedImage scaledImage = new BufferedImage(
@@ -225,21 +207,18 @@ public class Main {
 
 						// Paint scaled version of image to new image
 
-						Graphics2D graphics2D = scaledImage.createGraphics();
+						graphics2D = scaledImage.createGraphics();
 						graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
 							RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 						graphics2D.drawImage(capture, 0, 0, width, height, null);
-
-						// clean up
-						graphics2D.dispose();
 						
 						imageBuffer.add(scaledImage);
 						facePanel.assignImage(scaledImage);
 						facePanel.repaint();
-						Thread.sleep(50);
 					}
-				}
-
+				
+				} //while
+				
 			}
 		} catch (InterruptedException e2) {
 			// TODO Auto-generated catch block
@@ -251,17 +230,5 @@ public class Main {
 			e.printStackTrace();
 		}
 	} // end main
-
-	private String getLocalAddress() {
-		String theAddresString;
-		try {
-			theAddresString = Inet4Address.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			return null;
-		}
-		System.out.println(theAddresString);
-		return theAddresString;
-	}
 
 }
