@@ -19,7 +19,7 @@ public class DBconnect {
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
 			
-			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", "root", "");
+			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/ChatRoom", "root", "");
 			st = (Statement) con.createStatement();
 			
 			
